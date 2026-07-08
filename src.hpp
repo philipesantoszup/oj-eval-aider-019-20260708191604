@@ -20,6 +20,7 @@ void Calculate(std::vector<Matrix *> keys, std::vector<Matrix *> values,
     size_t d = keys[0]->GetColumnNum();
 
     // 1. Construct K_all [num_elements, d]
+    // Instead of repeated Concat/Copy, we can build it more efficiently
     Matrix* k_all = matrix_memory_allocator.Allocate("k_all");
     gpu_sim.Copy(keys[0], k_all, Position::kInGpuHbm);
     for (size_t j = 1; j < num_elements; ++j) {
@@ -40,7 +41,6 @@ void Calculate(std::vector<Matrix *> keys, std::vector<Matrix *> values,
     }
 
     // 3. Compute S = Q * K_all^T
-    // Q is [num_elements, d], K_all is [num_elements, d]
     Matrix* k_all_t = matrix_memory_allocator.Allocate("k_all_t");
     gpu_sim.Copy(k_all, k_all_t, Position::kInGpuHbm);
     gpu_sim.Transpose(k_all_t, Position::kInGpuHbm);
@@ -51,7 +51,6 @@ void Calculate(std::vector<Matrix *> keys, std::vector<Matrix *> values,
     gpu_sim.MatMul(current_query, k_all_t, s);
 
     // 4. Softmax(S) row-wise
-    // S is [num_elements, num_elements]
     Matrix* softmax_s = matrix_memory_allocator.Allocate("softmax_s");
     
     for (size_t r = 0; r < num_elements; ++r) {
